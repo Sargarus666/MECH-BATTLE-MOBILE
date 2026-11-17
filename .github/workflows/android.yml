@@ -22,11 +22,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install Android platform and build tools
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          yes | "$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager" --licenses >/dev/null || true
-          "$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: "15859902"
+          accept-android-sdk-licenses: "true"
+          packages: "platforms;android-35 build-tools;35.0.0"
 
       - name: Download PicoDrive core for arm64-v8a
         run: |
