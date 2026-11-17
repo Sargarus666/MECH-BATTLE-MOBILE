@@ -7,7 +7,7 @@ android {
     namespace = "com.sargarus.mechbattle"
     compileSdk = 35
 
-    defaultConfig {
+    defaultConfig {\n        ndk { abiFilters += listOf("arm64-v8a") }
         applicationId = "com.sargarus.mechbattle"
         minSdk = 23
         targetSdk = 35
@@ -32,5 +32,5 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-    implementation("com.github.swordfish90:libretrodroid:0.13.0")
+    implementation("com.github.swordfish90:libretrodroid:0.13.2")
 }
