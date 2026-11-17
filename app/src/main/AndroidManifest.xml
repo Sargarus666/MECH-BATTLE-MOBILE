@@ -2,7 +2,7 @@
     <application
         android:allowBackup="true"
         android:label="MECH BATTLE Mobile"
-        android:theme="@android:style/Theme.Material.NoActionBar"
+        android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
