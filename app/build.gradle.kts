@@ -7,7 +7,10 @@ android {
     namespace = "com.sargarus.mechbattle"
     compileSdk = 35
 
-    defaultConfig {\n        ndk { abiFilters += listOf("arm64-v8a") }
+    defaultConfig {
+        ndk {
+            abiFilters.add("arm64-v8a")
+        }
         applicationId = "com.sargarus.mechbattle"
         minSdk = 23
         targetSdk = 35
