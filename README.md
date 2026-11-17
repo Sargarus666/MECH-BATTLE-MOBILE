@@ -12,7 +12,7 @@ Native Android frontend for Sega Genesis / Mega Drive games.
 
 ## Build
 GitHub Actions downloads the arm64 PicoDrive core and runs `gradle assembleDebug`.
-Run the workflow manually from Actions or push a change to `main`.
+The workflow runs automatically on every push to `main`; it can also be started manually from Actions.
 
 The APK is published as the workflow artifact `MECH-BATTLE-Mobile-debug`.
 
