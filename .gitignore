@@ -1,0 +1,20 @@
+# User-owned game media: never commit ROMs, BIOS images, or disc images.
+*.bin
+*.gen
+*.smd
+*.rom
+*.cue
+*.iso
+*.chd
+*.srm
+*.state
+
+# ROM-derived analysis and native recompilation outputs stay local.
+/roms/
+/private-roms/
+/generated/
+/build/
+/app/build/
+*.ramdump
+*.z80dump
+*.m68kdump
