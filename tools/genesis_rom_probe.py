@@ -119,6 +119,10 @@ def parse_rom(data: bytes, source: str = "<memory>") -> dict[str, Any]:
         raise ProbeError("Genesis header signature 'SEGA' was not found at 0x100")
 
     initial_sp = _u32(data, 0x00)
+    # The 68000 exposes a 24-bit physical address bus. Some ROMs encode
+    # the initial stack pointer as a sign-extended 32-bit address (e.g.
+    # 0xFFFFFFFC), which aliases the final longword of work RAM (0xFFFFFC).
+    initial_sp_bus_address = initial_sp & 0x00FFFFFF
     initial_pc = _u32(data, 0x04)
     expected_checksum = _u16(data, 0x18E)
     computed_checksum = _computed_checksum(data)
@@ -170,7 +174,8 @@ def parse_rom(data: bytes, source: str = "<memory>") -> dict[str, Any]:
             "region": _text(data[0x1F0:0x1F3]),
         },
         "initial_stack_pointer": f"0x{initial_sp:08X}",
-        "initial_stack_pointer_in_work_ram": 0xFF0000 <= initial_sp <= 0xFFFFFF and initial_sp % 2 == 0,
+        "initial_stack_pointer_bus_address": f"0x{initial_sp_bus_address:06X}",
+        "initial_stack_pointer_in_work_ram": 0xFF0000 <= initial_sp_bus_address <= 0xFFFFFF and initial_sp_bus_address % 2 == 0,
         "reset_pc": f"0x{initial_pc:08X}",
         "reset_pc_valid_rom_target": 0x200 <= initial_pc < len(data) and initial_pc % 2 == 0,
         "m68k_vector_entries": vector_entries,
@@ -191,7 +196,7 @@ def format_text(result: dict[str, Any]) -> str:
         f"Title: {header['title_overseas'] or header['title_domestic'] or '(not set)'}",
         f"Serial: {header['serial'] or '(not set)'}",
         f"Region: {header['region'] or '(not set)'}",
-        f"Reset SP: {result['initial_stack_pointer']} (work RAM: {result['initial_stack_pointer_in_work_ram']})",
+        f"Reset SP: {result['initial_stack_pointer']} (24-bit bus: {result['initial_stack_pointer_bus_address']}, work RAM: {result['initial_stack_pointer_in_work_ram']})",
         f"Reset PC: {result['reset_pc']} (valid ROM target: {result['reset_pc_valid_rom_target']})",
         f"Checksum: expected {header['checksum_expected']}, computed {header['checksum_computed']} (match: {header['checksum_matches']})",
         "68000 vector entry candidates: " + ", ".join(result["m68k_candidate_entry_points"]),
