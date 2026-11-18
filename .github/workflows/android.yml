@@ -11,10 +11,29 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Verify pinned static recompiler source
+        run: |
+          test "$(git -C third_party/segarecomp rev-parse HEAD)" = "8d419ab029c2222ab6b699b516c6fee53bac650c"
+          grep -q "Mozilla Public License Version 2.0" third_party/segarecomp/LICENSE
+
+      - name: Build upstream Genesis C11 runtime libraries (host portability smoke test)
+        run: |
+          cmake --version
+          cmake -S third_party/segarecomp -B /tmp/segarecomp-build -G Ninja \
+            -DBUILD_TESTING=OFF \
+            -DSEGARECOMP_ENABLE_SDL3_VIEWER=OFF \
+            -DSEGARECOMP_BUILD_LAUNCHER=OFF
+          cmake --build /tmp/segarecomp-build --target \
+            segarecomp_runtime_genesis \
+            segarecomp_runtime_genesis_z80 \
+            segarecomp_runtime_genesis_audio
 
       - name: Run ROM-independent tooling tests
         run: |

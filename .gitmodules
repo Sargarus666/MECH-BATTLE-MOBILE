@@ -1,0 +1,3 @@
+[submodule "third_party/segarecomp"]
+	path = third_party/segarecomp
+	url = https://github.com/marinocg/segarecomp.git
