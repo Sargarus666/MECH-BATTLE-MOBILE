@@ -47,6 +47,15 @@ class GenesisRomProbeTests(unittest.TestCase):
         self.assertEqual(result["m68k_discovery_status"], "vector_seeds_only")
         self.assertEqual(result["z80_discovery_status"], "not_performed")
 
+
+    def test_sign_extended_initial_stack_pointer_uses_24_bit_bus_alias(self):
+        data = bytearray(make_rom())
+        data[0:4] = struct.pack(">I", 0xFFFFFFFC)
+        result = parse_rom(bytes(data))
+        self.assertEqual(result["initial_stack_pointer"], "0xFFFFFFFC")
+        self.assertEqual(result["initial_stack_pointer_bus_address"], "0xFFFFFC")
+        self.assertTrue(result["initial_stack_pointer_in_work_ram"])
+
     def test_checksum_mismatch_is_reported_not_repaired(self):
         data = bytearray(make_rom())
         data[0x200] ^= 0x01
