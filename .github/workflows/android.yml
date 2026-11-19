@@ -46,11 +46,7 @@ jobs:
         with:
           cmdline-tools-version: "15859902"
           accept-android-sdk-licenses: "true"
-          packages: |
-            platforms;android-35
-            build-tools;35.0.0
-            ndk;27.2.12479018
-            cmake;3.22.1
+          packages: "platforms;android-35 build-tools;35.0.0 ndk;27.2.12479018 cmake;3.22.1"
 
       - name: Locate Android NDK and CMake toolchain
         run: |
