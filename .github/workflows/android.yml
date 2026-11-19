@@ -93,7 +93,7 @@ jobs:
           gradle-version: "8.9"
 
       - name: Build debug APK
-        run: gradle --no-daemon --stacktrace clean assembleDebug
+        run: gradle --no-daemon --stacktrace clean testDebugUnitTest assembleDebug
 
       - name: Verify APK
         run: |

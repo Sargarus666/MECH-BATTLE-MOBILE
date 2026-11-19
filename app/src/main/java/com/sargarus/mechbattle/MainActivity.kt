@@ -105,18 +105,25 @@ class MainActivity : AppCompatActivity() {
         root.addView(right, FrameLayout.LayoutParams(-2, -2, Gravity.END or Gravity.BOTTOM).apply { rightMargin = 14; bottomMargin = 12 })
     }
 
-    private fun padButton(label: String, key: Int): Button =
-        makeButton(label) {}.apply {
-            setOnTouchListener { _, event ->
+    private fun padButton(label: String, key: Int): Button {
+        val keyState = PointerKeyState(
+            onPressed = { retroView?.sendKeyEvent(android.view.KeyEvent.ACTION_DOWN, key) },
+            onReleased = { retroView?.sendKeyEvent(android.view.KeyEvent.ACTION_UP, key) }
+        )
+        return makeButton(label) {}.apply {
+            setOnTouchListener { view, event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN ->
-                        retroView?.sendKeyEvent(android.view.KeyEvent.ACTION_DOWN, key)
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL ->
-                        retroView?.sendKeyEvent(android.view.KeyEvent.ACTION_UP, key)
+                        keyState.pointerDown(event.getPointerId(event.actionIndex))
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP ->
+                        keyState.pointerUp(event.getPointerId(event.actionIndex))
+                    MotionEvent.ACTION_CANCEL -> keyState.cancel()
                 }
+                view.isPressed = keyState.isPressed
                 true
             }
         }
+    }
 
     private fun makeButton(label: String, action: () -> Unit): Button =
         Button(this).apply {
