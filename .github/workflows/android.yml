@@ -46,29 +46,26 @@ jobs:
         with:
           cmdline-tools-version: "15859902"
           accept-android-sdk-licenses: "true"
-          packages: "platforms;android-35 build-tools;35.0.0 ndk;27.2.12479018 cmake;3.22.1"
+          packages: "platforms;android-35 build-tools;35.0.0 ndk;27.2.12479018"
 
       - name: Locate Android NDK and CMake toolchain
         run: |
           NDK_TOOLCHAIN="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake"
-          ANDROID_CMAKE="$ANDROID_HOME/cmake/3.22.1/bin/cmake"
           test -f "$NDK_TOOLCHAIN"
-          test -x "$ANDROID_CMAKE"
           echo "ANDROID_NDK_TOOLCHAIN=$NDK_TOOLCHAIN" >> "$GITHUB_ENV"
-          echo "ANDROID_CMAKE=$ANDROID_CMAKE" >> "$GITHUB_ENV"
-          "$ANDROID_CMAKE" --version
+          cmake --version
           "$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" --version
 
       - name: Cross-compile Genesis C11 runtime with Android NDK (arm64-v8a)
         run: |
-          "$ANDROID_CMAKE" -S third_party/segarecomp -B /tmp/segarecomp-android -G "Unix Makefiles" \
+          cmake -S third_party/segarecomp -B /tmp/segarecomp-android -G "Unix Makefiles" \
             -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_TOOLCHAIN" \
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-23 \
             -DBUILD_TESTING=OFF \
             -DSEGARECOMP_ENABLE_SDL3_VIEWER=OFF \
             -DSEGARECOMP_BUILD_LAUNCHER=OFF
-          "$ANDROID_CMAKE" --build /tmp/segarecomp-android --target \
+          cmake --build /tmp/segarecomp-android --target \
             segarecomp_runtime_genesis \
             segarecomp_runtime_genesis_z80 \
             segarecomp_runtime_genesis_audio
