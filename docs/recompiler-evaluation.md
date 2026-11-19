@@ -1,8 +1,8 @@
 # Static recompiler evaluation — BattleTech (Genesis)
 
-**Review date:** 2026-11-18  
+**Review date:** 2026-11-19  
 **Target:** the user's exact Sega Genesis / Mega Drive BattleTech: A Game of Armored Combat ROM revision.  
-**Compatibility status:** **unknown / not tested**. No ROM archive was available in the current conversation or searchable Library during this review. No BattleTech-specific generated code has been produced.
+**Compatibility status:** **unknown / not tested**. The user-supplied archive is now available in conversation-private file storage and has had a header/vector-only first pass. No BattleTech-specific generated code, complete 68000/Z80 discovery, or gameplay validation has been produced. ROM bytes, hashes, disassembly, and assets remain private and are not committed or uploaded to CI.
 
 ## Decision
 
@@ -32,6 +32,12 @@ This is a **toolchain choice**, not a BattleTech compatibility claim. The public
 - segarecomp: README.md, LICENSE, CHANGELOG.md, platforms/genesis/README.md, platforms/genesis/runtime/CMakeLists.txt, platforms/genesis/runtime/runtime.h, docs/architecture/pipeline.md, docs/product/compatibility-ledger.md, and docs/product/compatibility-ledger.json.
 - Genesis Recomp: README.md, LICENSE.md, LICENSE-recompiler, docs/Z80_STATIC_RECOMP.md, docs/DISASSEMBLIES.md, and the runner/platform support section.
 - genrecomp: README.md, LICENSE, LICENSES/Genesis-Plus-GX.txt, docs/recompiler.md, docs/recomp-runtime.md, CMakeLists.txt, and include/genrecomp/platform.h.
+
+## BattleTech input evidence
+
+The available Genesis control guide documents the standard three-button mapping: D-pad for movement/aiming, A/B/C for weapon groups A/B/C, and Start for the pause menu. Holding A charges some A-group weapons; holding B enables rapid fire for B-group weapons. In the two-player mode, Player 1 is the gunner (D-pad aiming plus A/B/C) and Player 2 pilots the legs and movement. The pause menu also uses A/B/C to switch its three pages. See the [GameFAQs Genesis control guide](https://gamefaqs.gamespot.com/genesis/586052-battletech/faqs/61254) and the independent [Genesis controls listing](https://1upheart.com/sega-genesis/battletech-a-game-of-armored-combat/).
+
+This is a game-control mapping, not yet a verified hardware-register mapping for the supplied image. The touch design should preserve independent pointer ownership so the D-pad can remain held while any weapon button is pressed; actual I/O bit assignments and menu-state edge cases still need ROM/code validation. A scanned publisher manual has not yet been located.
 
 ## ROM-specific unknowns that must be measured
 
