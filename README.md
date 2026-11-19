@@ -17,10 +17,11 @@ The static-recompiler comparison and current decision are recorded in [docs/reco
 - LibretroDroid 0.13.2 with PicoDrive downloaded during CI for arm64-v8a.
 - Debug APK built by GitHub Actions; artifact retention is 14 days.
 - This build is only a temporary compatibility/reference frontend, not evidence that BattleTech works in a static recompiler.
+- CI separately builds the pinned Genesis C11 runtime and cross-compiles its Genesis/Z80/audio libraries for Android arm64-v8a (API 23); those libraries are not yet linked into this APK.
 
 ## Build
 
-GitHub Actions downloads the arm64 PicoDrive core and runs gradle assembleDebug.
+GitHub Actions builds the host and Android C11 runtime libraries, runs Python and Android unit tests, downloads the arm64 PicoDrive core, and runs `testDebugUnitTest assembleDebug`.
 The workflow runs on pushes to main and can be started manually from Actions.
 
 The APK is uploaded as the workflow artifact MECH-BATTLE-Mobile-debug.

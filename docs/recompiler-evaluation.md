@@ -41,17 +41,21 @@ This is a game-control mapping, not yet a verified hardware-register mapping for
 
 ## ROM-specific unknowns that must be measured
 
-The current evidence is insufficient to choose a per-game integration configuration. Once the exact image is available in a private workspace, the first pass must record:
+The exact image is now available in conversation-private storage. A first pass has recorded its file identity, Genesis header/checksum, reset SP/PC, and vector targets. That pass is not full code discovery or a compatibility test; ROM bytes, hashes, and derived code remain private. The following work remains before a per-game integration configuration can be selected:
 
-1. SHA-256, byte size, raw/interleaved format, header signature, product/serial string, declared ROM range, region bytes, and checksum result.
-2. Initial 68000 SP/PC and all vector-table targets that map to even ROM addresses.
+1. **Recorded privately:** SHA-256, byte size, linear `.gen` format, header signature, product/serial, declared ROM range, region, and checksum result. The checksum mismatch still needs explanation; do not rewrite it as a workaround.
+2. **Recorded privately at seed level:** initial 68000 SP/PC and vector-table targets. Normalize sign-extended addresses to the 24-bit bus; vector entries are only discovery seeds, not the reachable instruction graph.
 3. Reachable 68000 instructions, indirect jumps/calls, computed dispatch tables, overlays, code copied to RAM, and self-modifying regions. A vector table is only a set of starting candidates, not complete code discovery.
 4. Sound-driver upload sources and all Z80 RAM/code variants. The Genesis header does not identify the Z80 driver; it must be found through 68000 writes/copy loops or runtime evidence.
 5. VDP register usage, DMA modes, H/V interrupt timing, raster effects, work-RAM mapping, controller I/O, and any cartridge-specific banking or backup-memory behavior.
 6. Save behavior: SRAM/EEPROM address ranges, enable protocol, write timing, and state consistency.
-7. Exact controller semantics in the game's manual or a verified in-game control screen. Do not assume generic A/B/C assignments.
+7. Hardware controller-register bit assignments and menu-state edge cases from code or an in-game test. The public Genesis control guide establishes the high-level D-pad/A/B/C/Start mapping, but the actual I/O bit mapping remains unverified.
 
 For every unsupported opcode or dispatch miss, retain the ROM address and the exact diagnostic from the recompiler. Do not invent a seed or hardware mapping to make a build proceed. A missing generated target, dynamic code, bank switch, or unmodeled device access is a blocker until evidence explains it.
+
+## Current build boundary
+
+GitHub Actions now builds the pinned Genesis C11 runtime on the host and cross-compiles the Genesis, Z80, and audio runtime libraries for Android arm64-v8a at API 23. The current APK does **not** link or call those libraries: it still contains LibretroDroid and the temporary PicoDrive core only. The native runtime build is a portability proof, not a BattleTech game integration.
 
 ## Android integration boundary
 
