@@ -11,9 +11,7 @@ permissions:
 jobs:
   portable-cli:
     name: Build portable static recompiler CLI
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:24.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -24,8 +22,8 @@ jobs:
           submodules: recursive
       - name: Install pinned build tools
         run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential ca-certificates git ninja-build python3 python3-pip
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential ninja-build python3-pip
           python3 -m pip install --break-system-packages --user cmake==3.31.6
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           cmake --version
