@@ -9,6 +9,52 @@ permissions:
   contents: read
 
 jobs:
+  portable-cli:
+    name: Build portable static recompiler CLI
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout pinned upstream source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          submodules: recursive
+      - name: Install pinned build tools
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential ca-certificates git ninja-build python3 python3-pip
+          python3 -m pip install --break-system-packages --user cmake==3.31.6
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          cmake --version
+          ldd --version | head -n 1
+      - name: Verify pinned static recompiler source
+        run: |
+          test "$(git -C third_party/segarecomp rev-parse HEAD)" = "8d419ab029c2222ab6b699b516c6fee53bac650c"
+          grep -q "Mozilla Public License Version 2.0" third_party/segarecomp/LICENSE
+      - name: Build and smoke-test portable CLI
+        run: |
+          cmake -S third_party/segarecomp -B /tmp/segarecomp-portable -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DSEGARECOMP_ENABLE_SDL3_VIEWER=OFF -DSEGARECOMP_BUILD_LAUNCHER=OFF
+          cmake --build /tmp/segarecomp-portable --target segarecomp --parallel 2
+          CLI="$(find /tmp/segarecomp-portable -type f -name segarecomp -perm -u+x -print -quit)"
+          test -n "$CLI"
+          python3 third_party/segarecomp/tests/probe_genesis_startup_test.py "$CLI"
+          python3 third_party/segarecomp/tests/genesis_general_startup_cli_test.py "$CLI"
+          mkdir -p /tmp/segarecomp-cli-artifact
+          install -m 0755 "$CLI" /tmp/segarecomp-cli-artifact/segarecomp
+          cp third_party/segarecomp/LICENSE /tmp/segarecomp-cli-artifact/LICENSE
+          printf '%s\n' 'Upstream: https://github.com/marinocg/segarecomp' 'Pinned source commit: 8d419ab029c2222ab6b699b516c6fee53bac650c' 'License: MPL-2.0' 'Build environment: Ubuntu 24.04 container (glibc 2.39 baseline)' 'This artifact contains the CLI only; no ROM, BIOS, generated game code, or game assets.' > /tmp/segarecomp-cli-artifact/SOURCE.txt
+          sha256sum /tmp/segarecomp-cli-artifact/segarecomp
+      - name: Upload portable CLI for private analysis
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: segarecomp-cli-linux-x86_64-portable
+          path: /tmp/segarecomp-cli-artifact/
+          if-no-files-found: error
+          retention-days: 14
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -25,18 +71,6 @@ jobs:
         run: |
           cmake -S third_party/segarecomp -B /tmp/segarecomp-build -G Ninja -DBUILD_TESTING=OFF -DSEGARECOMP_ENABLE_SDL3_VIEWER=OFF -DSEGARECOMP_BUILD_LAUNCHER=OFF
           cmake --build /tmp/segarecomp-build --target segarecomp_runtime_genesis segarecomp_runtime_genesis_z80 segarecomp_runtime_genesis_audio
-      - name: Build and smoke-test the pinned static recompiler CLI
-        run: |
-          cmake --build /tmp/segarecomp-build --target segarecomp --parallel 2
-          CLI="$(find /tmp/segarecomp-build -type f -name segarecomp -perm -u+x -print -quit)"
-          test -n "$CLI"
-          python3 third_party/segarecomp/tests/probe_genesis_startup_test.py "$CLI"
-          python3 third_party/segarecomp/tests/genesis_general_startup_cli_test.py "$CLI"
-          mkdir -p /tmp/segarecomp-cli-artifact
-          install -m 0755 "$CLI" /tmp/segarecomp-cli-artifact/segarecomp
-          cp third_party/segarecomp/LICENSE /tmp/segarecomp-cli-artifact/LICENSE
-          printf '%s\n' 'Upstream: https://github.com/marinocg/segarecomp' 'Pinned source commit: 8d419ab029c2222ab6b699b516c6fee53bac650c' 'License: MPL-2.0' 'This artifact contains the CLI only; no ROM, BIOS, generated game code, or game assets.' > /tmp/segarecomp-cli-artifact/SOURCE.txt
-          sha256sum /tmp/segarecomp-cli-artifact/segarecomp
       - name: Set up JDK 17
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
@@ -102,14 +136,6 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
-      - name: Upload static recompiler CLI for private analysis
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: segarecomp-cli-linux-x86_64
-          path: /tmp/segarecomp-cli-artifact/
-          if-no-files-found: error
-          retention-days: 14
-
       - name: Install and launch on Android 15 emulator
         uses: ReactiveCircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed # v2.34.0
         with:
