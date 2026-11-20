@@ -25,6 +25,46 @@ jobs:
         run: |
           cmake -S third_party/segarecomp -B /tmp/segarecomp-build -G Ninja -DBUILD_TESTING=OFF -DSEGARECOMP_ENABLE_SDL3_VIEWER=OFF -DSEGARECOMP_BUILD_LAUNCHER=OFF
           cmake --build /tmp/segarecomp-build --target segarecomp_runtime_genesis segarecomp_runtime_genesis_z80 segarecomp_runtime_genesis_audio
+      - name: Build and smoke-test the pinned static recompiler CLI
+        run: |
+          cmake --build /tmp/segarecomp-build --target segarecomp --parallel 2
+          CLI="$(find /tmp/segarecomp-build -type f -name segarecomp -perm -u+x -print -quit)"
+          test -n "$CLI"
+          "$CLI" probe-genesis-startup-decode 4E71 - | tee /tmp/segarecomp-decode-smoke.json
+          grep -q '"decoded":true' /tmp/segarecomp-decode-smoke.json
+          grep -q '"support":"supported"' /tmp/segarecomp-decode-smoke.json
+          python3 - <<'PY'
+          import struct
+          from pathlib import Path
+
+          rom = bytearray(0x400)
+          struct.pack_into(">I", rom, 0x00, 0x00FFFFFC)
+          struct.pack_into(">I", rom, 0x04, 0x00000200)
+          rom[0x100:0x110] = b"SEGA GENESIS    "
+          rom[0x110:0x120] = b"(C)CI FIXTURE   "
+          rom[0x120:0x150] = b"CI RECOMP TEST".ljust(48, b" ")
+          rom[0x150:0x180] = b"CI RECOMP TEST".ljust(48, b" ")
+          rom[0x180:0x18E] = b"GM CI-TEST-00".ljust(14, b" ")
+          struct.pack_into(">I", rom, 0x1A0, 0)
+          struct.pack_into(">I", rom, 0x1A4, len(rom) - 1)
+          struct.pack_into(">I", rom, 0x1A8, 0x00FF0000)
+          struct.pack_into(">I", rom, 0x1AC, 0x00FFFFFF)
+          rom[0x1F0:0x1F3] = b"U  "
+          rom[0x200:0x206] = bytes.fromhex("7000524060FA")
+          checksum = sum(
+              int.from_bytes(rom[offset:offset + 2], "big")
+              for offset in range(0x200, len(rom), 2)
+          ) & 0xFFFF
+          struct.pack_into(">H", rom, 0x18E, checksum)
+          Path("/tmp/segarecomp-smoke.gen").write_bytes(rom)
+          PY
+          "$CLI" genesis-general-startup /tmp/segarecomp-smoke.gen | tee /tmp/segarecomp-general-startup-smoke.txt
+          test -s /tmp/segarecomp-general-startup-smoke.txt
+          mkdir -p /tmp/segarecomp-cli-artifact
+          install -m 0755 "$CLI" /tmp/segarecomp-cli-artifact/segarecomp
+          cp third_party/segarecomp/LICENSE /tmp/segarecomp-cli-artifact/LICENSE
+          printf '%s\n' 'Upstream: https://github.com/marinocg/segarecomp' 'Pinned source commit: 8d419ab029c2222ab6b699b516c6fee53bac650c' 'License: MPL-2.0' 'This artifact contains the CLI only; no ROM, BIOS, generated game code, or game assets.' > /tmp/segarecomp-cli-artifact/SOURCE.txt
+          sha256sum /tmp/segarecomp-cli-artifact/segarecomp
       - name: Set up JDK 17
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
@@ -103,5 +143,12 @@ jobs:
         with:
           name: MECH-BATTLE-Mobile-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload static recompiler CLI for private analysis
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: segarecomp-cli-linux-x86_64
+          path: /tmp/segarecomp-cli-artifact/
           if-no-files-found: error
           retention-days: 14
