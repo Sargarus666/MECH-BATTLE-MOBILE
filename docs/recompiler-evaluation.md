@@ -87,7 +87,9 @@ A separate strict reachability pass with PC-index recovery found:
 
 The single indexed PC-relative jump remains unresolved: PC-index recovery reports index_unknown, originating from an untracked load/source, and recovers zero table targets. The separate PC-relative offset-table proposal command returned no proposals. The 17 indirect JSR (An) sites still need their concrete target sets and dispatch-table ownership established. The two out-of-ROM target candidates have not been assigned a meaning; they must not be guessed into a mapping.
 
-No unsupported 68000 opcode has been positively identified by these passes. That is not proof of full opcode coverage: the graph is incomplete and no generated program has been compiled or executed.
+A separate per-word-position decode-token report was cross-checked against the 19,140 instruction starts in this reachability set: 19,134 were classified as ordinary decodes, 6 as architectural exception forms, and 0 as rejected/undecodable/truncated. The ordinary family counts were move 9,157; arithmetic 3,852; logic/bit 488; shift 705; control 4,382; other 550. Its control tokens independently classified 17 dynamic calls and 1 dynamic jump, matching the 17 `JSR (An)` sites and the single PC-indexed `JMP` in the reachability report. The token report is classification evidence only: it does not resolve those targets, prove code/data ownership, or validate generated-code lowering/runtime behavior.
+
+No unsupported 68000 opcode has been positively identified in the discovered instruction starts. This is not proof of full compatibility: indirect dispatch, the cartridge-window access, the remaining discovery frontiers, and generated-code execution are still unresolved.
 
 An optional PEA-continuation heuristic increased overlapping starts, rejected targets, and odd targets without resolving the indexed site, so it is not used for the baseline report.
 
