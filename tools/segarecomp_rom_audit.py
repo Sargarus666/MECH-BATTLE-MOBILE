@@ -134,6 +134,77 @@ def _safe_reachability(report_path: Path) -> dict[str, Any]:
     }
 
 
+
+def _safe_decode_token_report(token_path: Path, reachability_path: Path, image_size: int) -> dict[str, Any]:
+    """Cross-check reachable instruction starts against segarecomp's address-free token export."""
+    try:
+        data = token_path.read_bytes()
+        reachability = json.loads(reachability_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AuditError(f"cannot read private decode-token evidence: {exc}") from exc
+
+    header, separator, payload = data.partition(b"\n")
+    match = re.fullmatch(
+        rb"segarecomp\.m68k_decode_tokens\.v1 positions ([0-9]+) fields status length family control ea_src ea_dst width flags",
+        header,
+    )
+    if not separator or match is None:
+        raise AuditError("m68k-decode-token-report has an unknown header")
+    positions = int(match.group(1))
+    if positions != image_size // 2:
+        raise AuditError("m68k-decode-token-report position count does not match the ROM image")
+    if len(payload) != positions * 8 + 4 or not payload.endswith(b"end\n"):
+        raise AuditError("m68k-decode-token-report has an invalid body length or trailer")
+    tokens = payload[:-4]
+
+    discovered = reachability.get("discovered")
+    aggregate = reachability.get("aggregate", {})
+    if not isinstance(discovered, list) or aggregate.get("discovered") != len(discovered):
+        raise AuditError("reachability instruction-start list does not match its aggregate count")
+
+    status_counts: Counter[int] = Counter()
+    family_counts: Counter[int] = Counter()
+    control_counts: Counter[int] = Counter()
+    for address in discovered:
+        if not isinstance(address, str) or re.fullmatch(r"(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})", address) is None:
+            raise AuditError("reachability contains an invalid instruction-start address")
+        pc = int(address, 16)
+        if pc & 1 or pc >= image_size:
+            raise AuditError("reachability instruction start is odd or outside the ROM image")
+        row = tokens[(pc // 2) * 8 : (pc // 2 + 1) * 8]
+        status, length, family, control, ea_src, ea_dst, width, flags = row
+        if status > 2 or length > 5 or family > 7 or control > 7 or ea_src > 12 or ea_dst > 12 or width > 3 or flags > 3:
+            raise AuditError("m68k-decode-token-report contains an out-of-range field")
+        if status == 0 and any(row):
+            raise AuditError("rejected decode-token row is not zero-filled")
+        status_counts[status] += 1
+        if status == 2:
+            family_counts[family] += 1
+            control_counts[control] += 1
+
+    family_names = {1: "move", 2: "arithmetic", 3: "logic_bit", 4: "shift", 5: "control", 6: "exception_raising", 7: "other"}
+    control_names = {0: "none", 1: "conditional", 2: "direct_jump", 3: "direct_call", 4: "dynamic_jump", 5: "dynamic_call", 6: "return", 7: "always_exception_or_trap"}
+    sites = aggregate.get("sites", {})
+    dynamic_call_site_count = sum(sites.get(name, 0) for name in ("jsr_(An)", "jsr_d16(An)", "jsr_(d8,An,Xn)", "jsr_(d8,PC,Xn)"))
+    dynamic_jump_site_count = sum(sites.get(name, 0) for name in ("jmp_(An)", "jmp_d16(An)", "jmp_(d8,An,Xn)", "jmp_(d8,PC,Xn)"))
+    dynamic_calls = control_counts[5]
+    dynamic_jumps = control_counts[4]
+    return {
+        "discovered_instruction_starts": len(discovered),
+        "status_counts": {
+            "ordinary": status_counts[2],
+            "architectural_exception": status_counts[1],
+            "rejected_or_undecodable": status_counts[0],
+        },
+        "ordinary_family_counts": {family_names[key]: value for key, value in sorted(family_counts.items())},
+        "ordinary_control_counts": {control_names[key]: value for key, value in sorted(control_counts.items())},
+        "dynamic_calls": dynamic_calls,
+        "dynamic_jumps": dynamic_jumps,
+        "dynamic_call_count_matches_reachability": dynamic_calls == dynamic_call_site_count,
+        "dynamic_jump_count_matches_reachability": dynamic_jumps == dynamic_jump_site_count,
+    }
+
+
 def _outside_repository(path: Path) -> Path:
     resolved = path.expanduser().resolve()
     repository = Path(__file__).resolve().parents[1]
@@ -234,6 +305,15 @@ def run_audit(
         )
         _require_success("genesis-reachability-challenger", reachability)
         report["m68k_reachability"] = _safe_reachability(private_reachability)
+
+        private_tokens = private / "m68k-decode-tokens.bin"
+        token_report = _run(
+            cli,
+            ["m68k-decode-token-report", "--rom", str(private_rom), "--output", str(private_tokens)],
+            timeout,
+        )
+        _require_success("m68k-decode-token-report", token_report)
+        report["m68k_decode_tokens"] = _safe_decode_token_report(private_tokens, private_reachability, len(rom_bytes))
 
         z80 = _run(cli, ["genesis-z80-static-report", "--rom", str(private_rom)], timeout)
         _require_success("genesis-z80-static-report", z80)

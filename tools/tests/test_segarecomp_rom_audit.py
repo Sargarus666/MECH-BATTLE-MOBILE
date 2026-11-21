@@ -47,9 +47,22 @@ case "$command" in
       shift
     done
     cat > "$report" <<'JSON'
-{"aggregate":{"discovered":77,"call_continuations":9,"unmapped_targets":2,"rejected_decode_targets":0,"odd_targets":0,"sites":{"jsr_(An)":3,"jmp_(d8,PC,Xn)":1},"pc_index_recovery":{"sites_encountered":1,"resolved":0,"unresolved":1,"outcomes":{"index_unknown":1},"index_unknown_origins":{"untracked_load_or_source":1}}},"discovered":["SECRET_ADDRESS"],"unmapped_targets":["SECRET_TARGET"]}
+{"aggregate":{"discovered":3,"call_continuations":9,"unmapped_targets":2,"rejected_decode_targets":0,"odd_targets":0,"sites":{"jsr_(An)":1,"jmp_(d8,PC,Xn)":0},"pc_index_recovery":{"sites_encountered":1,"resolved":0,"unresolved":1,"outcomes":{"index_unknown":1},"index_unknown_origins":{"untracked_load_or_source":1}}},"discovered":["000200","000202","000204"],"unmapped_targets":["SECRET_TARGET"],"private_address":"SECRET_ADDRESS"}
 JSON
     printf '%s\n' '{"outcome":"partial"}'
+    ;;
+  m68k-decode-token-report)
+    while [ "$#" -gt 0 ]; do
+      if [ "$1" = "--output" ]; then shift; output="$1"; fi
+      shift
+    done
+    printf "%s\n" "segarecomp.m68k_decode_tokens.v1 positions 512 fields status length family control ea_src ea_dst width flags" > "$output"
+    header_bytes=$(wc -c < "$output")
+    dd if=/dev/zero bs=4096 count=1 >> "$output" 2>/dev/null
+    printf "end\n" >> "$output"
+    printf "\002\001\001\000\000\000\000\000" | dd of="$output" bs=1 seek=$((header_bytes + 256 * 8)) conv=notrunc 2>/dev/null
+    printf "\002\001\005\005\000\000\000\000" | dd of="$output" bs=1 seek=$((header_bytes + 257 * 8)) conv=notrunc 2>/dev/null
+    printf "\001\001\006\007\000\000\000\000" | dd of="$output" bs=1 seek=$((header_bytes + 258 * 8)) conv=notrunc 2>/dev/null
     ;;
   genesis-z80-static-report)
     printf '%s\n' 'outcome=partial epochs=2 candidates=2 steps=30 nodes=12 contexts=5 copy_loops=1 decoder_calls=0 staged_decodes=0 horizon_paths=3 images=1 refusal.length_unknown=1'
@@ -89,9 +102,13 @@ class SegarecompRomAuditTests(unittest.TestCase):
         self.assertEqual(report["m68k_startup"]["result"], "partial")
         self.assertEqual(report["m68k_startup"]["completed_blocks"], 12)
         self.assertEqual(report["m68k_startup"]["frontier_count"], 2)
-        self.assertEqual(report["m68k_reachability"]["discovered_instruction_starts"], 77)
-        self.assertEqual(report["m68k_reachability"]["indirect_jsr_sites"], 3)
+        self.assertEqual(report["m68k_reachability"]["discovered_instruction_starts"], 3)
+        self.assertEqual(report["m68k_reachability"]["indirect_jsr_sites"], 1)
         self.assertEqual(report["m68k_reachability"]["pc_index_recovery"]["index_unknown"], 1)
+        self.assertEqual(report["m68k_decode_tokens"]["status_counts"], {"ordinary": 2, "architectural_exception": 1, "rejected_or_undecodable": 0})
+        self.assertEqual(report["m68k_decode_tokens"]["ordinary_family_counts"], {"move": 1, "control": 1})
+        self.assertEqual(report["m68k_decode_tokens"]["dynamic_calls"], 1)
+        self.assertTrue(report["m68k_decode_tokens"]["dynamic_call_count_matches_reachability"])
         self.assertEqual(report["z80_static"]["refusals"]["length_unknown"], 1)
         serialized = json.dumps(report)
         self.assertNotIn("SECRET", serialized)

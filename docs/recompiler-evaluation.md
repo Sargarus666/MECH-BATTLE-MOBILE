@@ -60,7 +60,7 @@ python3 tools/segarecomp_rom_audit.py /private/path/battletech.zip \
   --emit-c /private/path/battletech-generated.c
 ~~~
 
-The audit tests use a fake CLI and a synthetic fixture; CI never receives the user's ROM.
+The audit tests use a fake CLI and a synthetic fixture; CI never receives the user's ROM. The private audit also cross-checks reachable 68000 instruction starts against segarecomp's address-free decode-token report and retains only aggregate status, family, and control-flow counts.
 
 ## 68000 discovery results
 
