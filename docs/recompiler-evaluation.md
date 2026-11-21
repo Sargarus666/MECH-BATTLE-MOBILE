@@ -68,10 +68,10 @@ The specialized genesis-rom-startup check returned startup_graph_mismatch. This 
 
 The broader genesis-general-startup analysis returned partial after 138 completed blocks and reported 17 frontiers:
 
-- one unmapped data-access frontier at the Genesis VDP data window;
+- one unmapped byte-write frontier at 68000 PC `0x00000314` to address `0x00208000`, inside the standard cartridge decode window but outside this image's 2 MiB declared ROM range;
 - sixteen discovery-prefix-budget frontiers.
 
-The VDP access is a hardware-map boundary, not an identified missing CPU instruction. The standard Genesis runtime has VDP support, but the current analysis result does not yet prove that this game's exact access pattern is admitted by the generated machine/runtime path.
+This is a cartridge-window access, **not a VDP access**. Sega's Technical Overview places cartridge ROM at `$000000–$3FFFFF` and the VDP ports at `$C00000` (pp. 7 and 18; [technical overview PDF](https://segaretro.org/images/1/18/GenesisTechnicalOverview.pdf)). The supplied header declares ROM range `$000000–$1FFFFF`; its optional external-memory descriptor is blank (see [Genesis ROM header reference](https://www.plutiedev.com/rom-header)). Those facts do not establish whether `$208000` aliases the 2 MiB image, returns open-bus data, or is decoded by cartridge-specific hardware. The current non-mirrored mapping claim ends at `$00200000`, so this remains an unresolved cartridge mapping/hardware frontier—not evidence of an unsupported CPU opcode.
 
 A separate strict reachability pass with PC-index recovery found:
 
